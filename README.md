@@ -7,7 +7,7 @@ import telebot
 from telebot import types
 import os
 
-bot = telebot.TeleBot('7873222653:AAHIwCmZf0MYO5fzWBgRsqRf-2pS7VTNm-M')
+bot = telebot.TeleBot('')
 
 BOOKS_FOLDER = "textbooks/"
 Импортируются необходимые библиотеки: telebot для работы с Telegram API, types для создания кнопок, os для работы с файловой системой.
