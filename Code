@@ -2,19 +2,25 @@ import telebot
 from telebot import types
 import os
 
-bot = telebot.TeleBot('TOKEN')  # Замените на свой токен
+bot = telebot.TeleBot('7873222653:AAHIwCmZf0MYO5fzWBgRsqRf-2pS7VTNm-M')
 
-# Путь к папке с учебниками (замените на свой)
 BOOKS_FOLDER = "textbooks/"
-
 
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
-    bot.reply_to(
-        message,
-        "Привет! Я бот для поиска учебников по разным предметам. Просто напиши название предмета, и я попробую найти для тебя материалы."
+    subject_keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    subject_keyboard.add(
+        types.KeyboardButton('Алгебра'),
+        types.KeyboardButton('Геометрия'),
+        types.KeyboardButton('Физика'),
+        types.KeyboardButton('Литература')
     )
 
+    bot.send_message(
+        message.chat.id,
+        "Привет! Я бот для поиска учебников. Выбери предмет:",
+        reply_markup=subject_keyboard
+    )
 
 @bot.message_handler(content_types=['text'])
 def handle_text(message):
@@ -23,53 +29,70 @@ def handle_text(message):
     if user_input == "привет":
         bot.send_message(
             message.chat.id,
-            "Привет! Я бот для поиска учебников. Напиши название предмета, например: Алгебра, Физика и т.д."
+            "Привет! Выбери предмет из меню ниже или напиши его название."
         )
-
     elif user_input == "алгебра":
-        # Создаем клавиатуру с выбором класса
-        keyboard = types.InlineKeyboardMarkup()
-        btn_7 = types.InlineKeyboardButton(text='7 класс', callback_data='algebra_7')
-        btn_8 = types.InlineKeyboardButton(text='8 класс', callback_data='algebra_8')
-        btn_9 = types.InlineKeyboardButton(text='9 класс', callback_data='algebra_9')
-        keyboard.add(btn_7, btn_8, btn_9)
-
-        bot.send_message(
-            message.chat.id,
-            "Вы выбрали Алгебру. Теперь укажите класс:",
-            reply_markup=keyboard
-        )
-
+        send_grade_keyboard(message, 'алгебре', 'algebra')
+    elif user_input == "геометрия":
+        send_grade_keyboard(message, 'геометрии', 'geometry')
+    elif user_input == "физика":
+        send_grade_keyboard(message, 'физике', 'physics')
+    elif user_input == "литература":
+        send_grade_keyboard(message, 'литературе', 'literature')
     else:
         bot.send_message(
             message.chat.id,
-            f"Извините, учебников по предмету '{message.text}' пока нет в базе."
+            f"Извините, учебников по предмету '{message.text}' пока нет в базе. Выберите предмет из меню."
         )
 
+def send_grade_keyboard(message, subject_name, subject_code):
+    grade_keyboard = types.InlineKeyboardMarkup()
+    grade_keyboard.add(
+        types.InlineKeyboardButton('7 класс', callback_data=f'{subject_code}_7'),
+        types.InlineKeyboardButton('8 класс', callback_data=f'{subject_code}_8'),
+        types.InlineKeyboardButton('9 класс', callback_data=f'{subject_code}_9')
+    )
+    bot.send_message(
+        message.chat.id,
+        f"Вы выбрали {subject_name.capitalize()}. Теперь выберите класс:",
+        reply_markup=grade_keyboard
+    )
 
 @bot.callback_query_handler(func=lambda call: True)
 def callback_inline(call):
-    if call.data.startswith('algebra_'):
-        class_num = call.data.split('_')[1]  # Получаем номер класса (7, 8, 9)
+    subjects = {
+        'algebra': 'алгебре',
+        'geometry': 'геометрии',
+        'physics': 'физике',
+        'literature': 'литературе'
+    }
 
-        # Формируем путь к файлу
-        file_path = os.path.join(BOOKS_FOLDER, f"algebra_{class_num}.pdf")
-
-        try:
-            # Отправляем файл
-            with open(file_path, 'rb') as file:
-                bot.send_document(
-                    call.message.chat.id,
-                    file,
-                    caption=f"Учебник по алгебре для {class_num} класса"
-                )
-        except FileNotFoundError:
-            bot.send_message(
-                call.message.chat.id,
-                f"Извините, учебник для {class_num} класса временно недоступен."
-            )
-    else:
+    parts = call.data.split('_')
+    if len(parts) != 2:
         bot.send_message(call.message.chat.id, "Неизвестная команда.")
+        return
 
+    subject_code, class_num = parts
+
+    if subject_code not in subjects:
+        bot.send_message(call.message.chat.id, "Такого предмета нет в базе.")
+        return
+
+    subject_name = subjects[subject_code]
+    file_name = f"{subject_code}_{class_num}.pdf"
+    file_path = os.path.join(BOOKS_FOLDER, file_name)
+
+    try:
+        with open(file_path, 'rb') as file:
+            bot.send_document(
+                call.message.chat.id,
+                file,
+                caption=f"Учебник по {subject_name} для {class_num} класса"
+            )
+    except FileNotFoundError:
+        bot.send_message(
+            call.message.chat.id,
+            f"Извините, учебник для {class_num} класса временно недоступен."
+        )
 
 bot.polling(none_stop=True)
